@@ -1,8 +1,9 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, File, UploadFile, Form, Depends
 from app.schemas import PostCreate, PostResponse
 from app.db import Post, create_db_and_tables, get_async_session
 from sqlalchemy.ext.asyncio import AsyncSession
 from contextlib import asynccontextmanager
+from sqlalchemy import select
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -12,44 +13,42 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 
-text_posts = {
-    1: {"title": "New post,", "content": "cool post"},
-    2: {"title": "Aprendiéndo FastAPI", "content": "Construir APIs con Python es sumamente rápido y divertido."},
-    3: {"title": "Consejo del día", "content": "No olvides escribir pruebas unitarias para tus endpoints."},
-    4: {"title": "Herramientas modernas", "content": "Usar uv para gestionar proyectos acelera mucho el flujo de trabajo."},
-    5: {"title": "Bug misterioso", "content": "Pasé dos horas buscando un error y solo era un espacio de más."},
-    6: {"title": "¡Hola Mundo!", "content": "Esta es la publicación final de prueba para rellenar la base de datos."},
-    7: {"title": "Rendimiento puro", "content": "FastAPI es uno de los frameworks de Python más rápidos gracias a Starlette y Pydantic."},
-    8: {"title": "Tips de Python", "content": "Los f-strings hacen que formatear texto sea legible y eficiente."},
-    9: {"title": "Configurando el entorno", "content": "Crear un entorno virtual limpio evita conflictos entre librerías."},
-    10: {"title": "Introducción a las APIs", "content": "REST es un estilo de arquitectura estándar para diseñar servicios web."},
-    11: {"title": "Documentación automática", "content": "Solo entra a /docs para ver la interfaz interactiva de Swagger UI."},
-    12: {"title": "El poder de Pydantic", "content": "Pydantic se encarga de la validación de datos y tipos de forma estricta."},
-    13: {"title": "Código asíncrono", "content": "Usar async y await permite manejar múltiples peticiones concurrentes."},
-    14: {"title": "Manejo de errores", "content": "Lanzar HTTPException personalizadas mejora la experiencia del cliente de la API."},
-    15: {"title": "Seguridad básica", "content": "Nunca subas contraseñas ni llaves secretas a tu repositorio de GitHub."},
-    16: {"title": "Variables de entorno", "content": "Usa archivos .env para guardar configuraciones sensibles de tu app."},
-    17: {"title": "Middlewares", "content": "Los middlewares procesan las peticiones antes de que lleguen a tus rutas."},
-    18: {"title": "Bases de datos", "content": "Pronto cambiaremos este diccionario en memoria por SQLite o PostgreSQL."},
-    19: {"title": "Despliegue", "content": "Puedes subir tu API de FastAPI de forma sencilla usando Docker."},
-    20: {"title": "Fin de las pruebas", "content": "Con veinte elementos ya puedes probar la paginación en tus endpoints."}
-}
+@app.post("/upload")
+async def upload_file(
+    file:UploadFile = File(...),
+    caption: str = Form(""),
+    session: AsyncSession = Depends(get_async_session)
+):
+    post = Post(
+        caption = caption,
+        url = "test url",
+        file_type = "photo",
+        file_name = "test nombre"
+    )
+    session.add(post)
+    await session.commit()
+    await session.refresh(post)
+    return post
 
 
-@app.get("/posts")
-def get_all_posts(limit:int=None):
-    if limit:
-        return list(text_posts.values())[:limit]
-    return text_posts
+@app.get("/feed")
+async def get_feed(
+    session: AsyncSession = Depends(get_async_session)
+):
+    result = await session.execute(select(Post).order_by(Post.created_at.desc()))
+    posts = [row[0] for row in result.all()]
 
-@app.get("/posts/{id}")
-def get_post(id:int) -> PostResponse:
-    if id not in text_posts:
-        raise HTTPException(status_code=404, detail="Post not found")
-    return text_posts.get(id)
+    posts_data = []
 
-@app.post("/posts")
-def create_post(post:PostCreate) -> PostResponse:
-    new_post = {"title": post.title, "content": post.content}
-    text_posts[max(text_posts.keys()) + 1] = new_post
-    return new_post
+    for post in posts:
+        posts_data.append(
+            {
+                "id": str(post.id),
+                "caption": post.caption,
+                "url": post.url,
+                "file_type": post.file_type,
+                "created_at": post.created_at.isoformat()    
+            }
+        )
+
+    return {"posts": posts_data}
