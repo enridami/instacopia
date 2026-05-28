@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from sqlalchemy import select
 from app.images import imagekit
 import uuid
-from app.users import auth_backend, current_active_user, fastapi_users
+from app.users import auth_backend, current_active_user, current_user_optional, fastapi_users
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -64,7 +64,7 @@ async def upload_file(
 @app.get("/feed")
 async def get_feed(
     session: AsyncSession = Depends(get_async_session),
-    user: User = Depends(current_active_user)
+    user: User | None = Depends(current_user_optional)
 ):
     result = await session.execute(select(Post).order_by(Post.created_at.desc()))
     posts = [row[0] for row in result.all()]
@@ -85,7 +85,7 @@ async def get_feed(
                 "file_type": post.file_type,
                 "file_name": post.file_name,
                 "created_at": post.created_at.isoformat(),
-                "is_owner": post.user_id == user.id,
+                "is_owner": bool(user and post.user_id == user.id),
                 "email": user_dict.get(post.user_id, "Unknown")   
             }
         )
