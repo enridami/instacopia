@@ -22,7 +22,7 @@ app.include_router(fastapi_users.get_verify_router(UserRead), prefix="/auth", ta
 app.include_router(fastapi_users.get_users_router(UserRead, UserUpdate), prefix="/users", tags=["users"])
 
 
-@app.post("/upload")
+@app.post("/upload", tags=["App"])
 async def upload_file(
     file:UploadFile = File(...),
     caption: str = Form(""),
@@ -61,7 +61,7 @@ async def upload_file(
         await file.close()
 
 
-@app.get("/feed")
+@app.get("/feed", tags=["App"])
 async def get_feed(
     session: AsyncSession = Depends(get_async_session),
     user: User | None = Depends(current_user_optional)
@@ -93,7 +93,7 @@ async def get_feed(
     return {"posts": posts_data}
 
 
-@app.delete("/posts/{post-id}")
+@app.delete("/posts/{post-id}", tags=["App"])
 async def  delete_post(post_id:str, session: AsyncSession = Depends(get_async_session), user: User = Depends(current_active_user)):
     try:
         post_uuid = uuid.UUID(post_id)
