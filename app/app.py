@@ -22,13 +22,21 @@ app.include_router(fastapi_users.get_verify_router(UserRead), prefix="/auth", ta
 app.include_router(fastapi_users.get_users_router(UserRead, UserUpdate), prefix="/users", tags=["users"])
 
 
-@app.post("/upload", tags=["App"])
+@app.post(
+    "/upload",
+    tags=["App"],
+    summary="Subir una imagen o video",
+    description=(
+        "Recibe un archivo multimedia y un caption, lo sube a ImageKit y crea un post "
+        "asociado al usuario autenticado."
+    ),
+)
 async def upload_file(
-    file:UploadFile = File(...),
-    caption: str = Form(""),
+    file: UploadFile = File(..., description="Archivo de imagen o video a subir."),
+    caption: str = Form("", description="Texto opcional que acompaña al post."),
     user: User = Depends(current_active_user),
     session: AsyncSession = Depends(get_async_session)
-):
+) -> PostCreate:
     try:
         file_data = await file.read()
 
@@ -61,11 +69,16 @@ async def upload_file(
         await file.close()
 
 
-@app.get("/feed", tags=["App"])
+@app.get(
+    "/feed",
+    tags=["App"],
+    summary="Obtener el feed de posts",
+    description="Devuelve todos los posts ordenados desde el más nuevo al más antiguo.",
+)
 async def get_feed(
     session: AsyncSession = Depends(get_async_session),
     user: User | None = Depends(current_user_optional)
-):
+) -> PostResponse:
     result = await session.execute(select(Post).order_by(Post.created_at.desc()))
     posts = [row[0] for row in result.all()]
 
@@ -93,8 +106,17 @@ async def get_feed(
     return {"posts": posts_data}
 
 
-@app.delete("/posts/{post-id}", tags=["App"])
-async def  delete_post(post_id:str, session: AsyncSession = Depends(get_async_session), user: User = Depends(current_active_user)):
+@app.delete(
+    "/posts/{post_id}",
+    tags=["App"],
+    summary="Eliminar un post",
+    description="Elimina un post solo si pertenece al usuario autenticado.",
+)
+async def delete_post(
+    post_id: str,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_active_user)
+):
     try:
         post_uuid = uuid.UUID(post_id)
 
