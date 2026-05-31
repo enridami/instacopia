@@ -1,4 +1,4 @@
-# Instacopia
+# InstaAPI
 
 Instacopia es un backend de práctica hecho con FastAPI para simular una red social simple. Permite registrar y autenticar usuarios, subir imágenes o videos, guardar publicaciones en SQLite y listar un feed de posts con información del autor.
 
