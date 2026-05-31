@@ -111,6 +111,3 @@ La API quedará disponible en:
 - Swagger UI es útil para probar los endpoints manualmente mientras desarrollás el frontend.
 
 
-## Screenshots del Swagger UI
-- 
-
